@@ -37,6 +37,8 @@ void load_plugin() {
 }
 
 void* control_thread_func(void* arg) {
+    (void)arg; // unused but necessary for pthread syscall
+
     int control_fd;
     struct sockaddr_un addr;
     char buffer[100];

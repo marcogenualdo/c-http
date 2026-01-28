@@ -1,4 +1,7 @@
 server
 *.so
+*.a
+*.la
+*.o
 
 *.log

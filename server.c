@@ -23,7 +23,7 @@ void* handle_client(void* arg) {
     // --- MINI PARSER ---
     // Extract the path from "GET /index.html HTTP/1.1"
     // We look for the first space, then the second space.
-    char *method = strtok(buffer, " ");
+    strtok(buffer, " ");
     char *path = strtok(NULL, " ");
 
     if (path != NULL) {
