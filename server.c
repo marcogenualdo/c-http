@@ -1,18 +1,53 @@
+#include <netinet/in.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
-#include <pthread.h>
 #include <dlfcn.h>
+#include <pthread.h>
+#include <signal.h>
+#include <stdatomic.h>
+#include <stdbool.h>
 #include <sys/socket.h>
-#include <netinet/in.h>
 #include <unistd.h>
+#include <string.h>
 
-// Global function pointer (The shared "tool" for all threads)
-char* (*handle_request_func)(char*);
+// Global Plugin State
+void* lib_handle = NULL;
+char* (*handle_request_func)(char*) = NULL;
+
+// The Gatekeeper: Read-Write Lock
+pthread_rwlock_t reload_lock = PTHREAD_RWLOCK_INITIALIZER;
+
+void load_plugin() {
+    // Write lock ensures no one is using the old pointer while we swap
+    pthread_rwlock_wrlock(&reload_lock);
+
+    if (lib_handle) dlclose(lib_handle);
+
+    lib_handle = dlopen("./handlers.so", RTLD_LAZY);
+    if (!lib_handle) {
+        fprintf(stderr, "Failed to load: %s\n", dlerror());
+        exit(1);
+    }
+    handle_request_func = dlsym(lib_handle, "handle_request");
+
+    pthread_rwlock_unlock(&reload_lock);
+    printf("Plugin loaded/reloaded successfully.\n");
+}
+
+// Signal Handler: Triggered by 'kill -USR1 [PID]'
+volatile atomic_bool reload_needed = false;
+
+void handle_sigusr1(int sig) {
+    printf("Signal received. Reloading plugin...\n");
+    reload_needed = true;
+}
 
 void* handle_client(void* arg) {
     int client_fd = *(int*)arg;
     free(arg);
+
+    // READ LOCK: Multiple threads can hold this simultaneously
+    pthread_rwlock_rdlock(&reload_lock);
 
     char buffer[2048] = {0};
     read(client_fd, buffer, 2048);
@@ -35,6 +70,8 @@ void* handle_client(void* arg) {
         free(response); // The plugin used malloc, so we must free!
     }
 
+    pthread_rwlock_unlock(&reload_lock);
+
     close(client_fd);
     return NULL;
 }
@@ -45,13 +82,11 @@ int main(int argc, char* argv[]) {
         port = atoi(argv[1]);
     }
 
-    // 1. Load the Library at Startup
-    void* handle = dlopen("./handlers.so", RTLD_LAZY);
-    if (!handle) {
-        fprintf(stderr, "Cannot load handlers.so: %s\n", dlerror());
-        return 1;
-    }
-    handle_request_func = dlsym(handle, "handle_request");
+    // Register the signal
+    signal(SIGUSR1, handle_sigusr1);
+
+    // Initial load
+    load_plugin();
 
     // 2. Setup Socket
     int server_fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -67,6 +102,12 @@ int main(int argc, char* argv[]) {
     listen(server_fd, 10);
 
     while(1) {
+        // Before accepting a new connection, check the flag
+        if (reload_needed) {
+            reload_needed = false;
+            load_plugin(); // Now we reload safely in the main thread
+        }
+
         int client_fd = accept(server_fd, NULL, NULL);
         int *arg = malloc(sizeof(int));
         *arg = client_fd;
@@ -75,7 +116,5 @@ int main(int argc, char* argv[]) {
         pthread_create(&tid, NULL, handle_client, arg);
         pthread_detach(tid);
     }
-
-    dlclose(handle);
     return 0;
 }
