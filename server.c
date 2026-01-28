@@ -2,70 +2,80 @@
 #include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
+#include <dlfcn.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <unistd.h>
 
-// A simple struct to pass data to our thread
-typedef struct {
-    int client_fd;
-} thread_args_t;
+// Global function pointer (The shared "tool" for all threads)
+char* (*handle_request_func)(char*);
 
+void* handle_client(void* arg) {
+    int client_fd = *(int*)arg;
+    free(arg);
 
+    char buffer[2048] = {0};
+    read(client_fd, buffer, 2048);
 
-// This function is what the new "Task" will execute
-void* handle_client(void* args) {
-    thread_args_t* t_args = (thread_args_t*)args;
-    int fd = t_args->client_fd;
-    free(t_args); // Free the struct memory allocated in main
+    // --- MINI PARSER ---
+    // Extract the path from "GET /index.html HTTP/1.1"
+    // We look for the first space, then the second space.
+    char *method = strtok(buffer, " ");
+    char *path = strtok(NULL, " ");
 
-    char buffer[1024] = {0};
-    read(fd, buffer, 1024);
+    if (path != NULL) {
+        printf("[Thread %lu] Processing path: %s\n", pthread_self(), path);
 
-    // Demonstrate shared memory: Every thread can see this same string
-    char *response = "HTTP/1.1 200 OK\nContent-Length: 18\n\nHello from Thread!";
-    write(fd, response, strlen(response));
+        // CALL THE PLUGIN
+        // This is the "ABI Call". We are jumping to code
+        // that wasn't here when we compiled the server.
+        char *response = handle_request_func(path);
 
-    printf("[Thread %lu] Handled request on FD %d\n", pthread_self(), fd);
+        write(client_fd, response, strlen(response));
+        free(response); // The plugin used malloc, so we must free!
+    }
 
-    close(fd);
+    close(client_fd);
     return NULL;
 }
 
-int main(int argc, char** argv) {
+int main(int argc, char* argv[]) {
     int port = 8080;
-    if (argc != 1) {
+    if (argc > 1) {
         port = atoi(argv[1]);
     }
 
-    int server_fd;
-    struct sockaddr_in addr = { .sin_family = AF_INET, .sin_port = htons(port), .sin_addr.s_addr = INADDR_ANY };
+    // 1. Load the Library at Startup
+    void* handle = dlopen("./handlers.so", RTLD_LAZY);
+    if (!handle) {
+        fprintf(stderr, "Cannot load handlers.so: %s\n", dlerror());
+        return 1;
+    }
+    handle_request_func = dlsym(handle, "handle_request");
 
-    server_fd = socket(AF_INET, SOCK_STREAM, 0);
+    // 2. Setup Socket
+    int server_fd = socket(AF_INET, SOCK_STREAM, 0);
+    struct sockaddr_in addr = {
+        .sin_family = AF_INET,
+        .sin_port = htons(port),
+        .sin_addr.s_addr = INADDR_ANY
+    };
     if (bind(server_fd, (struct sockaddr*)&addr, sizeof(addr)) != 0) {
-        perror("Failed to bind socket");
+        printf("Could not bind to port %d", port);
         return 1;
     }
     listen(server_fd, 10);
-    printf("Listening on port %d\n", port);
 
     while(1) {
         int client_fd = accept(server_fd, NULL, NULL);
+        int *arg = malloc(sizeof(int));
+        *arg = client_fd;
 
-        // Prepare arguments for the thread
-        thread_args_t *args = malloc(sizeof(thread_args_t));
-        args->client_fd = client_fd;
-
-        pthread_t thread_id;
-        // pthread_create tells the kernel to spawn a new task sharing the address space
-        if (pthread_create(&thread_id, NULL, handle_client, args) != 0) {
-            perror("Failed to create thread");
-            close(client_fd);
-            free(args);
-        }
-
-        // We "detach" the thread so the OS cleans up its resources automatically when it ends
-        pthread_detach(thread_id);
+        pthread_t tid;
+        pthread_create(&tid, NULL, handle_client, arg);
+        pthread_detach(tid);
     }
+
+    dlclose(handle);
     return 0;
 }
