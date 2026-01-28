@@ -9,6 +9,9 @@
 #include <unistd.h>
 #include <string.h>
 #include "control.h"
+#include "responses.h"
+
+#define HTTP_HEADER_BUFFER_SIZE 4096
 
 void* handle_client(void* arg) {
     int client_fd = *(int*)arg;
@@ -17,17 +20,50 @@ void* handle_client(void* arg) {
     // READ LOCK: Multiple threads can hold this simultaneously
     pthread_rwlock_rdlock(&reload_lock);
 
-    char buffer[2048] = {0};
-    read(client_fd, buffer, 2048);
+    // Read request
+    char buffer[HTTP_HEADER_BUFFER_SIZE];
+    int total_read = 0;
 
-    // --- MINI PARSER ---
-    // Extract the path from "GET /index.html HTTP/1.1"
-    // We look for the first space, then the second space.
-    strtok(buffer, " ");
-    char *path = strtok(NULL, " ");
+    while (1) {
+        // Reading stream
+        int n = read(
+            client_fd,  // where to read
+            buffer + total_read,  // pointer to write start
+            sizeof(buffer) - total_read - 1  // now many bytes can write
+        );
+
+        if (n <= 0) break; // Error or closed
+
+        total_read += n;
+        buffer[total_read] = '\0'; // We safely have room for this because of the -1 above
+
+        // Checking if header block is fininshed
+        if (strstr(buffer, "\r\n\r\n")) {
+            break;
+        }
+
+        // OVERFLOW: Buffer is totally full, but still no \r\n\r\n found
+        if (total_read >= sizeof(buffer) - 1) {
+            write(client_fd, HTTP_ERR_431, strlen(HTTP_ERR_431));
+            break;
+        }
+    }
+
+    // Mini request parser
+    char *method = buffer;
+    char *path = strchr(buffer, ' ');
+    if (path) {
+        *path = '\0'; // Terminate "GET"
+        path++;       // Move to start of path
+
+        char *end_path = strchr(path, ' ');
+        if (end_path) {
+            *end_path = '\0'; // Terminate "/logic/test"
+        }
+    }
 
     if (path != NULL) {
-        printf("[Thread %lu] Processing path: %s\n", pthread_self(), path);
+        printf("[Thread %lu] Processing %s %s\n", pthread_self(), method, path);
 
         // CALL THE PLUGIN
         // This is the "ABI Call". We are jumping to code

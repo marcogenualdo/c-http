@@ -17,11 +17,6 @@ It was made to explore these UNIX/Linux concepts:
 * Multi threaded. One thread per connection.
 * Hot reloads HTTP handler library via Unix sockets.
 
-### Limitations (I just don't care)
-
-* Fixed TCP buffer size. If a message is too long, it just cuts it.
-* No graceful shutdown. On SIGTERM, packets may be dropped.
-
 
 # How it works
 

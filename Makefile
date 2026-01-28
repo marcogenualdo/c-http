@@ -24,7 +24,7 @@ $(CONTROL_OBJ): control.c control.h
 
 # 3. Build the dynamic plugin
 $(PLUGIN_SO): handlers.c
-	$(CC) $(CFLAGS) -fPIC -shared logic.c -o $(PLUGIN_SO)
+	$(CC) $(CFLAGS) -fPIC -shared handlers.c -o $(PLUGIN_SO)
 
 # --- Utility Targets ---
 
