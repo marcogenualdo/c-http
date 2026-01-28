@@ -23,6 +23,15 @@ It was made to explore these UNIX/Linux concepts:
 * No graceful shutdown. On SIGTERM, packets may be dropped.
 
 
+# How it works
+
+Split into data plane, and control plane.
+
+* Data plane (`server.c`): main loop. Listens for TCP connections, and dispatches them to threads.
+* Control plane (`control.c`, statically linked into main binary): spanws a thread to listen for reload requests. If a reload request is received, it alerts the data plane to reload the handler functions before accepting new requests.
+* Handler library (`handler.c`, linked at runtime): contains the (extremely basic) HTTP handlers.
+
+
 # How to use
 
 Most recipes are in the makefile.
