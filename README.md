@@ -4,7 +4,7 @@ Fun exercise to write a simple C HTTP server with threads and handlers hot reloa
 
 It was made to explore these UNIX/Linux concepts:
 
-* Dynamic vs static library linking
+* Dynamic library loading
 * Runtime ABI loading
 * Linux threads and tasks
 * Unix domain sockets and IPC
@@ -24,7 +24,7 @@ Split into data plane, and control plane.
 
 * Data plane (`server.c`): main loop. Listens for TCP connections, and dispatches them to threads.
 * Control plane (`control.c`, statically linked into main binary): spanws a thread to listen for reload requests. If a reload request is received, it alerts the data plane to reload the handler functions before accepting new requests.
-* Handler library (`handler.c`, linked at runtime): contains the (extremely basic) HTTP handlers.
+* Handler library (`handler.c`, loaded at runtime): contains the (extremely basic) HTTP handlers.
 
 
 # How to use
