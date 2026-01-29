@@ -1,43 +1,59 @@
 # --- Variables ---
-CC = gcc
-CFLAGS = -Wall -Wextra -g
-LDFLAGS = -lpthread -ldl
+CC      := gcc
+CFLAGS  := -Wall -Wextra -g -I./src
+LDFLAGS := -lpthread -ldl
 
-# Target names
-SERVER_BIN = server
-PLUGIN_SO = handlers.so
-CONTROL_OBJ = control.o
+# Directories
+SRC_DIR   := src
+BUILD_DIR := build
+
+# Target names (placed in root)
+SERVER_BIN := server
+PLUGIN_SO  := handlers.so
+
+# Object files (placed in build/)
+# This takes 'src/control.c' and turns it into 'build/control.o'
+CONTROL_OBJ := $(BUILD_DIR)/control.o
+SERVER_OBJ  := $(BUILD_DIR)/server.o
 
 # --- Default Target ---
+.PHONY: all clean reload test-reload
+
 all: $(SERVER_BIN) $(PLUGIN_SO)
 
 # --- Compilation Rules ---
 
-# 1. Build the server binary
-# It depends on the main source and the control object
-$(SERVER_BIN): server.c $(CONTROL_OBJ)
-	$(CC) $(CFLAGS) server.c $(CONTROL_OBJ) $(LDFLAGS) -o $(SERVER_BIN)
+# 1. Link the server binary
+# Uses $^ (all prerequisites) and $@ (target name)
+$(SERVER_BIN): $(SERVER_OBJ) $(CONTROL_OBJ)
+	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
 
-# 2. Build the control object (Static part)
-$(CONTROL_OBJ): control.c control.h
-	$(CC) $(CFLAGS) -c control.c -o $(CONTROL_OBJ)
+# 2. Build the dynamic plugin
+# Note: we compile directly from src/ to root for simplicity here,
+# but we use -fPIC which is required for shared libraries.
+$(PLUGIN_SO): $(SRC_DIR)/handlers.c
+	$(CC) $(CFLAGS) -fPIC -shared $< -o $@
 
-# 3. Build the dynamic plugin
-$(PLUGIN_SO): handlers.c
-	$(CC) $(CFLAGS) -fPIC -shared handlers.c -o $(PLUGIN_SO)
+# 3. Pattern Rule for Object Files
+# This handles BOTH server.o and control.o automatically.
+# The '| $(BUILD_DIR)' is an "order-only" prerequisite (it must exist,
+# but its timestamp doesn't force a recompile).
+$(BUILD_DIR)/%.o: $(SRC_DIR)/%.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+# 4. Ensure build directory exists
+$(BUILD_DIR):
+	mkdir -p $(BUILD_DIR)
 
 # --- Utility Targets ---
 
-# Clean up build artifacts
 clean:
-	rm -f $(SERVER_BIN) $(PLUGIN_SO) $(CONTROL_OBJ) /tmp/server.control
+	rm -rf $(BUILD_DIR) $(SERVER_BIN) $(PLUGIN_SO) /tmp/server.control
 
-# Hot Reload via CLI (requires the server to be running)
 reload:
 	@echo "Sending SIGUSR1 to server..."
 	pkill -USR1 -f ./$(SERVER_BIN) || echo "Server not running."
 
-# Test with our Unix Socket command
 test-reload:
 	@echo "Sending RELOAD command via Unix Socket..."
 	echo "RELOAD" | socat - UNIX-CONNECT:/tmp/server.control
