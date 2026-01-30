@@ -1,7 +1,7 @@
 # --- Variables ---
 CC      := gcc
 CFLAGS  := -Wall -Wextra -g -I./src
-LDFLAGS := -lpthread -ldl
+LDFLAGS := -lpthread -ldl -Wl,-rpath,'$$ORIGIN'
 
 # Directories
 SRC_DIR   := src
@@ -9,7 +9,7 @@ BUILD_DIR := build
 
 # Target names (placed in root)
 SERVER_BIN := server
-PLUGIN_SO  := handlers.so
+PLUGIN_SO  := libchttp-handlers.so
 
 # Object files (placed in build/)
 # This takes 'src/control.c' and turns it into 'build/control.o'

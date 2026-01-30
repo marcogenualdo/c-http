@@ -25,7 +25,7 @@ void load_plugin() {
 
     if (lib_handle) dlclose(lib_handle);
 
-    lib_handle = dlopen("./handlers.so", RTLD_LAZY);
+    lib_handle = dlopen("libchttp-handlers.so", RTLD_LAZY);
     if (!lib_handle) {
         fprintf(stderr, "Failed to load: %s\n", dlerror());
         exit(1);
