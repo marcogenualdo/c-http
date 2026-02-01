@@ -32,8 +32,5 @@ int read_request(int client_fd, char *buffer) {
         // checking for end of request
         if (strstr(buffer, "\r\n\r\n")) break;
     }
-
-    write(client_fd, HTTP_OK, strlen(HTTP_OK));
-    close(client_fd);
     return 0;
 }

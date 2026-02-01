@@ -9,10 +9,10 @@ BUILD_DIR := build
 
 # Target names (placed in root)
 SERVER_BIN := httpc
-PLUGIN_SO  := libchttp-handlers.so
+PLUGIN_SO  := libhttpc-handlers.so
 
 # Object files (placed in build/)
-STATIC_LIBS := $(BUILD_DIR)/http.o
+STATIC_LIBS := $(BUILD_DIR)/http.o $(BUILD_DIR)/control.o
 SERVER_OBJ  := $(BUILD_DIR)/server.o
 
 # --- Default Target ---

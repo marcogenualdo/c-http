@@ -1,7 +1,10 @@
 #include <stdio.h>
 #include <netinet/in.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/socket.h>
+#include <unistd.h>
+#include "control.h"
 #include "http.h"
 
 #define MAXCONN 10
@@ -43,12 +46,20 @@ int main(int argc, char *argv[])
         fprintf(stderr, "Could not bind to port %d", port);
     listen(tcp, MAXCONN);
 
+    handle_req_t handle_request_func = load_handlers();
+
     char buffer[BUFSIZE];
     while(1) {
         int client = accept(tcp, NULL, NULL);
+
         read_request(client, buffer);
         HttpRequest request = parse_request(buffer);
         fprintf(stderr, "Request: %s %s\n", request.method, request.path);
+
+        char *response = handle_request_func(request.path);
+        write(client, response, strlen(response));
+        free(response);
+        close(client);
     }
     //
     // start data loop
