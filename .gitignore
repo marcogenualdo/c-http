@@ -1,0 +1,7 @@
+httpc
+*.so
+*.a
+*.la
+*.o
+
+*.log
