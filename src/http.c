@@ -6,8 +6,14 @@
 #include "http.h"
 
 HttpRequest parse_request(char *buffer) {
-    HttpRequest request;
-    sscanf(buffer, "%s %s", request.method, request.path);
+    HttpRequest request = {
+        .method = buffer,
+        .path = strchr(buffer, ' ') + 1
+    };
+    // edit the request buffer in place to split it into method and path strings
+    // very unsafe. A malformed or unfinished request will return an unchecked null pointer
+    *(request.path - 1) = '\0';
+    *strchr(request.path, ' ') = '\0';
     return request;
 }
 

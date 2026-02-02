@@ -4,8 +4,8 @@
 #define BUFSIZE 1024
 
 typedef struct http_request {
-    char method[4];
-    char path[BUFSIZE];
+    char *method;
+    char *path;
 } HttpRequest;
 
 HttpRequest parse_request(char *buffer);
