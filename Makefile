@@ -12,7 +12,7 @@ SERVER_BIN := httpc
 PLUGIN_SO  := libhttpc-handlers.so
 
 # Object files (placed in build/)
-STATIC_LIBS := $(BUILD_DIR)/http.o $(BUILD_DIR)/control.o
+STATIC_LIBS := $(BUILD_DIR)/http.o $(BUILD_DIR)/control.o $(BUILD_DIR)/worker.o
 SERVER_OBJ  := $(BUILD_DIR)/server.o
 
 # --- Default Target ---

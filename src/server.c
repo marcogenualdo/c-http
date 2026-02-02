@@ -1,13 +1,12 @@
-#include <stdio.h>
 #include <netinet/in.h>
+#include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <sys/socket.h>
+#include <sys/wait.h>
 #include <unistd.h>
-#include "control.h"
-#include "http.h"
+#include "worker.h"
 
-#define MAXCONN 10
+#define WORKERS 3
 
 // control thread
 // open unix socket
@@ -31,36 +30,21 @@ int main(int argc, char *argv[])
 
     // spawn control thread
     // spawn worker processes
-    int tcp = socket(AF_INET, SOCK_STREAM, 0);
-    struct sockaddr_in addr = {
-        .sin_family = AF_INET,
-        .sin_addr.s_addr = INADDR_ANY,
-        .sin_port = htons(port)
-    };
-    int optval = 1;
-    if (setsockopt(tcp, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval)) < 0) {
-        perror("setsockopt(SO_REUSEADDR) failed");
-        exit(EXIT_FAILURE);
+    for (int i = 0; i < WORKERS; i++) {
+        if (fork() == 0) {
+            start_worker(port);
+        }
     }
-    if (bind(tcp, (struct sockaddr*)&addr, sizeof(addr)))
-        fprintf(stderr, "Could not bind to port %d", port);
-    listen(tcp, MAXCONN);
+    fprintf(stderr, "Started %d workers.\n", WORKERS);
 
-    handle_req_t handle_request_func = load_handlers();
-
-    char buffer[BUFSIZE];
-    while(1) {
-        int client = accept(tcp, NULL, NULL);
-
-        read_request(client, buffer);
-        HttpRequest request = parse_request(buffer);
-        fprintf(stderr, "Request: %s %s\n", request.method, request.path);
-
-        char *response = handle_request_func(request.path);
-        write(client, response, strlen(response));
-        free(response);
-        close(client);
+    while (1) {
+        int status;
+        pid_t done = wait(&status);
+        if (done == -1) {
+            break;
+        }
     }
+
     //
     // start data loop
     // read from socket
