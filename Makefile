@@ -8,8 +8,8 @@ SRC_DIR   := src
 BUILD_DIR := build
 
 # Target names (placed in root)
-SERVER_BIN := httpc
-PLUGIN_SO  := libhttpc-handlers.so
+SERVER_BIN := chttp
+PLUGIN_SO  := libchttp-handlers.so
 
 # Object files (placed in build/)
 STATIC_LIBS := $(BUILD_DIR)/http.o $(BUILD_DIR)/control.o $(BUILD_DIR)/worker.o

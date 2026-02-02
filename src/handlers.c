@@ -4,7 +4,7 @@
 #include <unistd.h>
 #include "responses.h"
 
-#define ASSETS_PATH "/usr/share/httpc-server/www"
+#define ASSETS_PATH "/usr/share/chttp-server/www"
 
 const char* get_www_path() {
     const char* env_path = getenv("CHTTP_WWW_PATH");
