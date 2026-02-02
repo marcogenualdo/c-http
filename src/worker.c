@@ -5,7 +5,7 @@
 #include <sys/socket.h>
 #include <unistd.h>
 #include "control.h"
-#include "http.h"
+#include "requests.h"
 
 #define MAXCONN 10
 
