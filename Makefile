@@ -12,7 +12,7 @@ SERVER_BIN := chttp
 PLUGIN_SO  := libchttp-handlers.so
 
 # Object files (placed in build/)
-STATIC_LIBS := $(BUILD_DIR)/http.o $(BUILD_DIR)/worker.o
+STATIC_LIBS := $(BUILD_DIR)/worker.o $(BUILD_DIR)/requests.o
 SERVER_OBJ  := $(BUILD_DIR)/server.o
 
 # --- Default Target ---
