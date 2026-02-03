@@ -49,10 +49,12 @@ $(BUILD_DIR):
 clean:
 	rm -rf $(BUILD_DIR) $(SERVER_BIN) $(PLUGIN_SO) /tmp/server.control
 
-reload:
-	@echo "Sending SIGUSR1 to server..."
-	pkill -USR1 -f ./$(SERVER_BIN) || echo "Server not running."
-
 test-reload:
 	@echo "Sending RELOAD command via Unix Socket..."
 	echo "RELOAD" | socat - UNIX-CONNECT:/tmp/server.control
+
+arch-package:
+	extra-x86_64-build
+
+arch-install:
+	makepkg -si

@@ -1,6 +1,6 @@
 # Nginx style C HTTP Server
 
-Fun exercise to write a simple C HTTP server with threads and handlers runtime reloading.
+Fun exercise to write a simple C HTTP server with Nginx style worker processes and runtime reload.
 
 It was made to explore these UNIX/Linux concepts:
 
@@ -10,6 +10,7 @@ It was made to explore these UNIX/Linux concepts:
 * Signals handling
 * Poll and non blocking I/O
 * Syscalls and strace
+* Bonus: Archlinux packaging
 
 ### Features
 
