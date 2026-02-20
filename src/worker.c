@@ -39,8 +39,6 @@ int make_tcp_socket(int port) {
         .sin_port = htons(port)
     };
     int optval = 1;
-    // Allow rapid restarts (TIME_WAIT reuse)
-    setsockopt(tcp, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval));
 
     // Allow multiple processes to bind to the same port (Kernel load balancing)
     if (setsockopt(tcp, SOL_SOCKET, SO_REUSEPORT, &optval, sizeof(optval)) < 0) {
